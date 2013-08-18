@@ -70,7 +70,9 @@ void start_maxhex(char *filename, int startaddr)
 				printw("%02X ", filebuf[i]);
 			}
 
-			if (filebuf[i] >= 0x21 && filebuf[i] <= 0x7E)
+			if (startaddr + i > endaddr)
+				dumpstr[j] = ' ';
+			else if (filebuf[i] >= 0x21 && filebuf[i] <= 0x7E)
 				dumpstr[j] = filebuf[i];
 			else
 				dumpstr[j] = '.';
@@ -79,7 +81,13 @@ void start_maxhex(char *filename, int startaddr)
 
 			if ((i + 1) % 16 == 0) {
 				printw("%s", dumpstr);
-				addch('\n');
+
+				if (cursoraddr / 0x10 == (startaddr + i) / 0x10) {
+					attron(A_STANDOUT);
+					mvaddch(y, (cursoraddr % 0x10) + 53, dumpstr[cursoraddr % 0x10]);
+					attroff(A_STANDOUT);
+				}
+
 				y++;
 			}
 		}
