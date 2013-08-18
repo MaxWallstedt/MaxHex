@@ -5,7 +5,7 @@ void print_help(char *arg0)
 	printf("Usage:\n\t$ %s file [/<start address>]\n\n", arg0);
 	printf("Valid arguments:\n");
 	printf("\t\"-h\" / \"--help\"\t\tDisplay this help message.\n");
-	printf("\t\"-v\" / \"--version\"\tDisplay version and copyright information.\n");
+	printf("\t\"-v\" / \"--version\"\tDisplay version and copyright information.\n\n");
 	printf("\t\"/<start address>\"\tSpecify the address (in hex, no prefix/suffix)\n\t\t\t\twhere you want to start edit the file.\n");
 }
 
