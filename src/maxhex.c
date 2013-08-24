@@ -5,7 +5,8 @@ void start_maxhex(char *filename, int startaddr)
 	FILE *fp = NULL;
 	unsigned char filebuf[352] = {0};
 	unsigned char dumpstr[17] = {0};
-	int i, j, y, c = 0;
+	char cmdstr[10] = {0};
+	int i, j, y, c = 0, cmdc = 0;
 	int cursoraddr = startaddr;
 	int endaddr;
 
@@ -92,7 +93,7 @@ void start_maxhex(char *filename, int startaddr)
 			}
 		}
 
-		mvprintw(23, 0, "Press 'q' to quit %s\tCurrent position: %04X\tFile ends at: %04X", PROGNAME, cursoraddr, endaddr);
+		mvprintw(23, 32, "Current position: %04X\tFile ends at: %04X", cursoraddr, endaddr);
 
 		refresh();
 		c = getchar();
@@ -105,6 +106,38 @@ void start_maxhex(char *filename, int startaddr)
 			cursoraddr++;
 		else if (c == 68 && cursoraddr > 0)		  /* Left? */
 			cursoraddr--;
+		else if (c == ':') {
+			curs_set(1);
+			mvaddch(23, 0, ':');
+			printw("\t\t\t\t");
+			move(23, 1);
+
+			do {
+				refresh();
+				c = getchar();
+
+				if (c >= 0x20 && c <= 0x7E) {
+					addch(c);
+					cmdstr[cmdc] = c;
+					cmdc++;
+				}
+			} while (c != '\n' && c != '\r');
+
+			if (!strcmp(cmdstr, "q")) {
+				c = 'q';
+			} else {
+				for (cmdc = 0; cmdc < 80; cmdc++)
+					mvaddch(23, cmdc, ' ');
+
+				mvprintw(23, 0, "Unknown command \":%s\"", cmdstr);
+			}
+
+			for (cmdc = 0; cmdc < 10; cmdc++)
+				cmdstr[cmdc] = '\0';
+
+			cmdc = 0;
+			curs_set(0);
+		}
 
 		if ((cursoraddr - (cursoraddr % 16) == startaddr) && startaddr)
 			startaddr -= 0x10;
