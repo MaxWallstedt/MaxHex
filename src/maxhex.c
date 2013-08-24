@@ -1,10 +1,28 @@
 #include "maxhex.h"
 
+char *make_swp(char *file)
+{
+	char *swp = malloc(strlen(file) + 7);
+	int i;
+
+	/* Find last slash in file path */
+	for (i = strlen(file) - 1; file[i - 1] != '/' && i > 0; i--)
+		;
+
+	strncpy(swp, file, i);
+	swp[i] = '.';
+	strcpy(swp + i + 1, file + i);
+	strcpy(swp + strlen(file) + 1, ".swp");
+
+	return swp;
+}
+
 void start_maxhex(char *filename, int startaddr)
 {
 	FILE *fp = NULL;
 	unsigned char filebuf[352] = {0};
 	unsigned char dumpstr[17] = {0};
+	char *tmpfilename = make_swp(filename);
 	char cmdstr[10] = {0};
 	int i, j, y, c = 0, cmdc = 0;
 	int cursoraddr = startaddr;
@@ -146,4 +164,7 @@ void start_maxhex(char *filename, int startaddr)
 	} while (c != 'q');
 
 	endwin();
+
+	printf("\n%s\n\n", tmpfilename);
+	free(tmpfilename);
 }
