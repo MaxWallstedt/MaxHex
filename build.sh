@@ -1,16 +1,17 @@
 #!/bin/bash
 
+CC=gcc
+
 SRCDIR="src"
 OBJDIR="obj"
 BINDIR="bin"
 
-SOURCES=(
-	main.c
-	maxhex.c
-	)
-
-OUTPUT=MaxHex
+SOURCES=(main.c maxhex.c)
 OBJECTS=()
+OUTPUT=MaxHex
+
+CFLAGS="-Wall -O3"
+LDFLAGS="-lncursesw"
 
 if [ ! -d "obj" ]
 then
@@ -28,13 +29,13 @@ do
 
 		if [ $OBJDATE -lt $SRCDATE ]
 		then
-			echo "gcc -c -Wall -O3 -o $OBJDIR/${i/%.*/.o} $SRCDIR/$i"
-			gcc -c -Wall -O3 -o $OBJDIR/${i/%.*/.o} $SRCDIR/$i
+			echo "$CC -c $CFLAGS -o $OBJDIR/${i/%.*/.o} $SRCDIR/$i"
+			$CC -c $CFLAGS -o $OBJDIR/${i/%.*/.o} $SRCDIR/$i
 			CHANGES=true
 		fi
 	else
-		echo "gcc -c -Wall -O3 -o $OBJDIR/${i/%.*/.o} $SRCDIR/$i"
-		gcc -c -Wall -O3 -o $OBJDIR/${i/%.*/.o} $SRCDIR/$i
+		echo "$CC -c $CFLAGS -o $OBJDIR/${i/%.*/.o} $SRCDIR/$i"
+		$CC -c $CFLAGS -o $OBJDIR/${i/%.*/.o} $SRCDIR/$i
 		CHANGES=true
 	fi
 
@@ -50,6 +51,6 @@ if [ $CHANGES = false -a -f $BINDIR/$OUTPUT ]
 then
 	echo "Nothing to do"
 else
-	echo "gcc -Wall -o $BINDIR/$OUTPUT ${OBJECTS[@]} -lncursesw"
-	gcc -Wall -o $BINDIR/$OUTPUT ${OBJECTS[@]} -lncursesw
+	echo "$CC $CFLAGS -o $BINDIR/$OUTPUT ${OBJECTS[@]} $LDFLAGS"
+	$CC -o $BINDIR/$OUTPUT ${OBJECTS[@]} $LDFLAGS
 fi
