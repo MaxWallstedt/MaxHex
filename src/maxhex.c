@@ -147,7 +147,7 @@ void start_maxhex(char *filename, int startaddr)
 				for (cmdc = 0; cmdc < 80; cmdc++)
 					mvaddch(23, cmdc, ' ');
 
-				mvprintw(23, 0, "Unknown command \":%s\"", cmdstr);
+				mvprintw(23, 0, "ERROR: Unknown command \"%s\"", cmdstr);
 			}
 
 			for (cmdc = 0; cmdc < 10; cmdc++)
