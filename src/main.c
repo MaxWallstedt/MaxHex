@@ -53,6 +53,8 @@ int main(int argc, char *argv[])
         char *file = NULL;
 	int i, startaddr = 0;
 
+	setlocale(LC_ALL, "");
+
 	for (i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "-h")
 		 || !strcmp(argv[i], "--help")) {

@@ -114,15 +114,15 @@ void start_maxhex(char *filename, int startaddr)
 		mvprintw(23, 32, "Current position: %04X\tFile ends at: %04X", cursoraddr, endaddr);
 
 		refresh();
-		c = getchar();
+		c = getch();
 
-		if (c == 65 && cursoraddr > 0x0F)		  /* Up? */
+		if (c == KEY_UP && cursoraddr > 0x0F)
 			cursoraddr -= 0x10;
-		else if (c == 66 && cursoraddr + 0x10 <= endaddr) /* Down? */
+		else if (c == KEY_DOWN && cursoraddr + 0x10 <= endaddr)
 			cursoraddr += 0x10;
-		else if (c == 67 && cursoraddr < endaddr)	  /* Right? */
+		else if (c == KEY_RIGHT && cursoraddr < endaddr)
 			cursoraddr++;
-		else if (c == 68 && cursoraddr > 0)		  /* Left? */
+		else if (c == KEY_LEFT && cursoraddr > 0)
 			cursoraddr--;
 		else if (c == ':') {
 			curs_set(1);
@@ -132,7 +132,7 @@ void start_maxhex(char *filename, int startaddr)
 
 			do {
 				refresh();
-				c = getchar();
+				c = getch();
 
 				if (c >= 0x20 && c <= 0x7E) {
 					addch(c);
