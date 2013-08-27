@@ -2,11 +2,17 @@
 
 void print_help(char *arg0)
 {
-	printf("Usage:\n\t$ %s file [/<start address>]\n\n", arg0);
-	printf("Valid arguments:\n");
-	printf("\t\"-h\" / \"--help\"\t\tDisplay this help message.\n");
-	printf("\t\"-v\" / \"--version\"\tDisplay version and copyright information.\n\n");
-	printf("\t\"/<start address>\"\tSpecify the address (in hex, no prefix/suffix)\n\t\t\t\twhere you want to start edit the file.\n");
+	printf("Usage:\n\t$ %s <file> [options]\n\n", arg0);
+	printf("Valid options:\n");
+	printf("\t-h / --help\t\t\tDisplay this help message.\n\n");
+	printf("\t-v / --version\t\t\tDisplay version and copyright\n");
+	printf("\t\t\t\t\tinformation.\n\n");
+	printf(
+	    "\t-a / --address <address>\tSpecify the address (in hex, dec,\n"
+		);
+	printf("\t\t\t\t\toct or bin) where you want to start\n");
+	printf("\t\t\t\t\tview the file.\n\n");
+	printf("\t-ro / --readonly\t\tOpen file as read-only\n");
 }
 
 void print_version(void)
@@ -15,25 +21,84 @@ void print_version(void)
 	printf("Copyright and GPL and shit.\n");
 }
 
-int is_hex(char *str)
+char is_hex(char *str)
 {
-	int i;
+	int i = 0;
+	int len = strlen(str);
 
-	for (i = 0; str[i] != '\0'; i++) {
-		if ((str[i] >= '0' && str[i] <= '9')
+	if (!strncmp(str, "0x", 2) || !strncmp(str, "0X", 2))
+		i += 2;
+	else if (*(str + len - 1) == 'h' || *(str + len - 1) == 'H')
+		len--;
+	else
+		return 0;
+
+	for ( ; i < len; i++) {
+		if (!((str[i] >= '0' && str[i] <= '9')
 		 || (str[i] >= 'a' && str[i] <= 'f')
-		 || (str[i] >= 'A' && str[i] <= 'F'))
-			;
-		else
+		 || (str[i] >= 'A' && str[i] <= 'F')))
 			return 0;
 	}
 
 	return 1;
 }
 
-int str_to_hex(char *str)
+char is_dec(char *str)
 {
-	int i, hex = 0;
+	int i = 0;
+	int len = strlen(str);
+
+	if (*(str + len - 1) == 'd' || *(str + len - 1) == 'D')
+		len--;
+
+	for ( ; i < len; i++) {
+		if (str[i] < '0' || str[i] > '9')
+			return 0;
+	}
+
+	return 1;
+}
+
+char is_oct(char *str)
+{
+	int i = 0;
+	int len = strlen(str);
+
+	if (str[0] == '0')
+		i++;
+	else if (*(str + len - 1) == 'o' || *(str + len - 1) == 'O')
+		len--;
+	else
+		return 0;
+
+	for ( ; i < len; i++) {
+		if (str[i] < '0' || str[i] > '7')
+			return 0;
+	}
+
+	return 1;
+}
+
+char is_bin(char *str)
+{
+	int i = 0;
+	int len = strlen(str);
+
+	if (*(str + len - 1) == 'b' || *(str + len - 1) == 'B')
+		len--;
+
+	for ( ; i < len; i++) {
+		if (str[i] != '0' && str[i] != '1')
+			return 0;
+	}
+
+	return 1;
+}
+
+unsigned long long str_to_hex(char *str)
+{
+	int i;
+	unsigned long long hex = 0;
 
 	for (i = 0; str[i] != '\0'; i++) {
 		if (str[i] >= '0' && str[i] <= '9')
@@ -47,11 +112,52 @@ int str_to_hex(char *str)
 	return hex;
 }
 
+unsigned long long str_to_dec(char *str)
+{
+	int i;
+	unsigned long long dec = 0;
+
+	for (i = 0; str[i] != '\0'; i++) {
+		if (str[i] >= '0' && str[i] <= '9')
+			dec = dec * 10 + str[i] - '0';
+	}
+
+	return dec;
+}
+
+unsigned long long str_to_oct(char *str)
+{
+	int i;
+	unsigned long long oct = 0;
+
+	for (i = 0; str[i] != '\0'; i++) {
+		if (str[i] >= '0' && str[i] <= '7')
+			oct = oct * 010 + str[i] - '0';
+	}
+
+	return oct;
+}
+
+unsigned long long str_to_bin(char *str)
+{
+	int i;
+	unsigned long long bin = 0;
+
+	for (i = 0; str[i] != '\0'; i++) {
+		if (str[i] == '0' || str[i] == '1')
+			bin = bin * 2 + str[i] - '0';
+	}
+
+	return bin;
+}
+
 int main(int argc, char *argv[])
 {
 	FILE *fp = NULL;
-        char *file = NULL;
-	int i, startaddr = 0;
+        char *filename = NULL;
+	int i;
+	char ro = 0;
+	unsigned long long startaddress = 0;
 
 	setlocale(LC_ALL, "");
 
@@ -60,57 +166,91 @@ int main(int argc, char *argv[])
 		 || !strcmp(argv[i], "--help")) {
 			print_help(argv[0]);
 
-			if (file)
-				free(file);
+			if (filename)
+				free(filename);
 
 			return 0;
 		} else if (!strcmp(argv[i], "-v")
 		        || !strcmp(argv[i], "--version")) {
 			print_version();
 
-			if (file)
-				free(file);
+			if (filename)
+				free(filename);
 
 			return 0;
-		} else if (*argv[i] == '/') {
-			if (!is_hex(argv[i] + 1)) {
-				printf("ERROR: \"%s\" is not a valid address\n\n", argv[i] + 1);
+		} else if (!strcmp(argv[i], "-a")
+		        || !strcmp(argv[i], "--address")) {
+			i++;
+
+			if (i == argc) {
+				printf(
+				 "ERROR: You must specify address after %s\n\n",
+				 argv[i - 1]
+					);
 				print_help(argv[0]);
 
-				if (file)
-					free(file);
+				if (filename)
+					free(filename);
 
 				return -1;
 			}
 
-			startaddr = str_to_hex(argv[i] + 1);
-		} else if (!file) {
-			file = malloc(strlen(argv[i]) + 1);
-			strcpy(file, argv[i]);
+			if (is_hex(argv[i])) {
+				startaddress = str_to_hex(argv[i]);
+			} else if (is_oct(argv[i])) {
+				startaddress = str_to_oct(argv[i]);
+			} else if (is_dec(argv[i])) {
+				startaddress = str_to_dec(argv[i]);
+			} else if (is_bin(argv[i])) {
+				startaddress = str_to_bin(argv[i]);
+			} else {
+				printf(
+				    "ERROR: %s is not a valid address\n\n",
+				    argv[i]
+					);
+				print_help(argv[0]);
+
+				if (filename)
+					free (filename);
+
+				return -1;
+			}
+		} else if (!strcmp(argv[i], "-ro")
+		        || !strcmp(argv[i], "readonly")) {
+			ro = 1;
+		} else if (!filename) {
+			filename = malloc(strlen(argv[i]) + 1);
+			strcpy(filename, argv[i]);
 		} else {
-			printf("ERROR: %s can only edit one file at the time\n\n", PROGNAME);
+			printf(
+			    "ERROR: %s can only open one file at the time\n\n",
+			    PROGNAME
+				);
 			print_help(argv[0]);
-			free(file);
+			free(filename);
+
 			return -1;
 		}
 	}
 
-	if (!file) {
+	if (!filename) {
 		printf("ERROR: Must specify file to edit\n\n");
 		print_help(argv[0]);
+
 		return -1;
 	}
 
-	if (!(fp = fopen(file, "rb"))) {
-		printf("ERROR: Could not open file \"%s\"\n\n", file);
+	if (!(fp = fopen(filename, "rb"))) {
+		printf("ERROR: Could not open file \"%s\"\n\n", filename);
 		print_help(argv[0]);
-		free(file);
+		free(filename);
+
 		return -1;
 	}
 
 	fclose(fp);
-	start_maxhex(file, startaddr);
-	free(file);
+	start_maxhex(filename, startaddress, ro);
+	free(filename);
 
 	return 0;
 }

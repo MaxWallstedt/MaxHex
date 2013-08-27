@@ -17,15 +17,15 @@ fi
 
 if [ -f $TARGET ]
 then
-	TARGET_DATE=`stat -c %Y $TARGET`
-	LOCAL_DATE=`stat -c %Y $LOCAL`
+	TARGETMD5=($(md5sum $TARGET))
+	LOCALMD5=($(md5sum $LOCAL))
 
-	if [ $TARGET_DATE -lt $LOCAL_DATE ]
+	if [ $TARGETMD5 != $LOCALMD5 ]
 	then
 		echo "cp -f $LOCAL $TARGET"
 		cp -f $LOCAL $TARGET
 	else
-		echo "Latest build already installed"
+		echo "Current build already installed"
 	fi
 else
 	echo "cp -f $LOCAL $TARGET"

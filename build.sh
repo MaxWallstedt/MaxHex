@@ -31,11 +31,23 @@ do
 		then
 			echo "$CC -c $CFLAGS -o $OBJDIR/${i/%.*/.o} $SRCDIR/$i"
 			$CC -c $CFLAGS -o $OBJDIR/${i/%.*/.o} $SRCDIR/$i
+
+			if [ $? -ne 0 ]
+			then
+				exit -1;
+			fi
+
 			CHANGES=true
 		fi
 	else
 		echo "$CC -c $CFLAGS -o $OBJDIR/${i/%.*/.o} $SRCDIR/$i"
 		$CC -c $CFLAGS -o $OBJDIR/${i/%.*/.o} $SRCDIR/$i
+
+		if [ $? -ne 0 ]
+		then
+			exit -1;
+		fi
+
 		CHANGES=true
 	fi
 

@@ -7,4 +7,4 @@
 #define PROGNAME	"MaxHex"
 #define PROGVER		"0.1"
 
-extern void start_maxhex(char *filename, int startaddr);
+extern void start_maxhex(char *filename, int startaddr, char ro);

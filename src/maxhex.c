@@ -17,7 +17,7 @@ char *make_swp(char *file)
 	return swp;
 }
 
-void start_maxhex(char *filename, int startaddr)
+void start_maxhex(char *filename, int startaddr, char ro)
 {
 	FILE *fp = NULL;
 	unsigned char filebuf[352] = {0};
