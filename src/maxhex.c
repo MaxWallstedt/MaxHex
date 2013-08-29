@@ -1,3 +1,7 @@
+#include <curses.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "maxhex.h"
 
 char *make_swp(char *file)
@@ -17,24 +21,19 @@ char *make_swp(char *file)
 	return swp;
 }
 
-void start_maxhex(char *filename, int startaddr, char ro)
+void start_maxhex(char *filename, unsigned long long cursoraddr, char ro)
 {
-	FILE *fp = NULL;
+	FILE *file = NULL;
+	FILE *tmpfile = NULL;
 	unsigned char filebuf[352] = {0};
 	unsigned char dumpstr[17] = {0};
 	char *tmpfilename = make_swp(filename);
-	char cmdstr[10] = {0};
+	char *cmdstr = NULL;
 	int i, j, y, c = 0, cmdc = 0;
-	int cursoraddr = startaddr;
-	int endaddr;
-
-	startaddr -= startaddr % 16;
-	i = 0;
-
-	while (startaddr > 0 && i < 10) {
-		startaddr -= 16;
-		i++;
-	}
+	unsigned long long startaddr = cursoraddr;
+	unsigned long long endaddr;
+	char eol = 0;	/* 0 == LF, 1 == CRLF */
+	int maxy, maxx;
 
 	initscr();
 	raw();
@@ -42,6 +41,22 @@ void start_maxhex(char *filename, int startaddr, char ro)
 	keypad(stdscr, TRUE);
 	meta(stdscr, TRUE);
 	curs_set(0);
+
+	getmaxyx(stdscr, maxy, maxx);
+
+	startaddr -= cursoraddr % 0x10;
+
+	if (maxy % 2 == 0) {
+		while (startaddr > 0
+		       && (cursoraddr - (cursoraddr % 0x10) - startaddr) / 0x10 < (maxy - 2) / 2 - 1
+			)
+			startaddr -= 0x10;
+	} else {
+		while (startaddr > 0
+		       && (cursoraddr - (cursoraddr % 0x10) - startaddr) / 0x10 < (maxy - 2) / 2
+			)
+			startaddr -= 0x10;
+	}
 
 	mvprintw(0, 0, "     ");
 
@@ -52,25 +67,25 @@ void start_maxhex(char *filename, int startaddr, char ro)
 
 	do {
 		y = 1;
-		fp = fopen(filename, "rb");
+		file = fopen(filename, "rb");
 
 		for (i = 0; c != EOF; i++) {
-			c = fgetc(fp);
+			c = fgetc(file);
 
 			if (c != EOF)
 				endaddr = i;
 		}
 
-		fclose(fp);
-		fp = fopen(filename, "rb");
+		fclose(file);
+		file = fopen(filename, "rb");
 
 		for (i = 0; i < startaddr; i++)
-			fgetc(fp);
+			fgetc(file);
 
 		for (i = 0; i < 352; i++)
-			filebuf[i] = fgetc(fp);
+			filebuf[i] = fgetc(file);
 
-		fclose(fp);
+		fclose(file);
 
 		for (i = 0; i < 352; i++) {
 			if (i % 16 == 0) {

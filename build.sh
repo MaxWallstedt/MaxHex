@@ -6,7 +6,7 @@ SRCDIR="src"
 OBJDIR="obj"
 BINDIR="bin"
 
-SOURCES=(main.c maxhex.c)
+SOURCES=(main.c maxhex.c intstr.c)
 OBJECTS=()
 OUTPUT=MaxHex
 
