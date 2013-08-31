@@ -6,17 +6,19 @@
 
 char *make_swp(char *file)
 {
-	char *swp = malloc(strlen(file) + 7);
+	char *swp = malloc(strlen(file) + 6);
 	int i;
 
-	/* Find last slash in file path */
-	for (i = strlen(file) - 1; file[i - 1] != '/' && i > 0; i--)
-		;
+	/* Find last '/' in file path */
+	i = strlen(file) - 1;
+
+	while (i > 0 && file[i - 1] != '/')
+		i--;
 
 	strncpy(swp, file, i);
 	swp[i] = '.';
-	strcpy(swp + i + 1, file + i);
-	strcpy(swp + strlen(file) + 1, ".swp");
+	strcpy(&swp[i + 1], &file[i]);
+	strcpy(&swp[strlen(file) + 1], ".swp");
 
 	return swp;
 }
@@ -27,13 +29,35 @@ void start_maxhex(char *filename, unsigned long long cursoraddr, char ro)
 	FILE *tmpfile = NULL;
 	unsigned char filebuf[352] = {0};
 	unsigned char dumpstr[17] = {0};
-	char *tmpfilename = make_swp(filename);
+	char *tmpfilename = NULL;
 	char *cmdstr = NULL;
 	int i, j, y, c = 0, cmdc = 0;
+	unsigned long long addrcount;
 	unsigned long long startaddr = cursoraddr;
 	unsigned long long endaddr;
 	char eol = 0;	/* 0 == LF, 1 == CRLF */
 	int maxy, maxx;
+
+	file = fopen(filename, "rb");
+
+	for (addrcount = 0; c != EOF; addrcount++) {
+		c = fgetc(file);
+
+		if (c != EOF)
+			endaddr = addrcount;
+	}
+
+	fclose(file);
+
+	if (cursoraddr > endaddr) {
+		printf(
+		"ERROR: File \"%s\" does not contain the address 0x%llX\n",
+		filename,
+		cursoraddr
+			);
+
+		return;
+	}
 
 	initscr();
 	raw();
@@ -44,17 +68,50 @@ void start_maxhex(char *filename, unsigned long long cursoraddr, char ro)
 
 	getmaxyx(stdscr, maxy, maxx);
 
+	if (!ro) {
+		tmpfilename = make_swp(filename);
+		tmpfile = fopen(tmpfilename, "wb");
+
+		if (!tmpfile) {
+			mvprintw(
+			    maxy - 3,
+			    0,
+			    "File could not be opened as read-write."
+				);
+			mvprintw(
+			    maxy - 2,
+			    0,
+			    "Do you want to open it as read-only? [y/n]"
+				);
+
+			do {
+				c = getch();
+
+				if (c == 'Y' || c == 'y') {
+					ro = 1;
+				} else if (c == 'N' || c == 'n') {
+					free(tmpfilename);
+					endwin();
+
+					return;
+				}
+			} while (c != 'Y' && c != 'y');
+		} else {
+			fclose(tmpfile);
+		}
+	}
+
 	startaddr -= cursoraddr % 0x10;
 
 	if (maxy % 2 == 0) {
 		while (startaddr > 0
-		       && (cursoraddr - (cursoraddr % 0x10) - startaddr) / 0x10 < (maxy - 2) / 2 - 1
-			)
+		       && (cursoraddr - (cursoraddr % 0x10) - startaddr)
+		          / 0x10 < (maxy - 2) / 2 - 1)
 			startaddr -= 0x10;
 	} else {
 		while (startaddr > 0
-		       && (cursoraddr - (cursoraddr % 0x10) - startaddr) / 0x10 < (maxy - 2) / 2
-			)
+		       && (cursoraddr - (cursoraddr % 0x10) - startaddr)
+		          / 0x10 < (maxy - 2) / 2)
 			startaddr -= 0x10;
 	}
 
