@@ -18,13 +18,18 @@ void print_help(char *arg0)
 		);
 	printf("\t\t\t\t\toct or bin) where you want to start\n");
 	printf("\t\t\t\t\tview the file.\n\n");
-	printf("\t-ro / --readonly\t\tOpen file as read-only\n");
+	printf("\t-ro / --readonly\t\tOpen file as read-only\n\n");
+	printf("For more information and bug reports, see:\n");
+	printf("  <https://github.com/MaxWallstedt/MaxHex.git>\n");
 }
 
 void print_version(void)
 {
-	printf("%s version %s\n\n", PROGNAME, PROGVER);
-	printf("Copyright and GPL and shit.\n");
+	printf("%s %s\n\n", PROGNAME, PROGVER);
+	printf("Copyright (C) 2013 Max Wällstedt.\n");
+	printf("License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\n");
+	printf("This is free software: you are free to change and redistribute it.\n");
+	printf("There is NO WARRANTY, to the extent permitted by law.\n");
 }
 
 int main(int argc, char *argv[])
