@@ -27,29 +27,29 @@ void start_maxhex(char *filename, unsigned long long cursoraddr, char ro)
 {
 	FILE *file = NULL;
 	FILE *tmpfile = NULL;
-	unsigned char filebuf[352] = {0};
-	unsigned char dumpstr[17] = {0};
+	unsigned char *filebuf = NULL;
+	char dumpstr[17] = {0};
 	char *tmpfilename = NULL;
-	char *cmdstr = NULL;
-	int i, j, y, c = 0, cmdc = 0;
+	/*char *cmdstr = NULL;*/
+	int i, j, y, c = 0/*, cmdc = 0*/;
 	unsigned long long addrcount;
 	unsigned long long startaddr = cursoraddr;
 	unsigned long long endaddr;
-	char eol = 0;	/* 0 == LF, 1 == CRLF */
-	int maxy, maxx;
+	char eol = 0;	/* 0 == LF, 1 == CR, 2 == LFCR, 3 == CRLF */
+	char mainloop = 1, fileexist = 1;
+	int maxy;
 
+	/* Find end address of file */
 	file = fopen(filename, "rb");
 
 	for (addrcount = 0; c != EOF; addrcount++) {
 		c = fgetc(file);
-
-		if (c != EOF)
-			endaddr = addrcount;
+		endaddr = addrcount;
 	}
 
 	fclose(file);
 
-	if (cursoraddr > endaddr) {
+	if (cursoraddr >= endaddr) {
 		printf(
 		"ERROR: File \"%s\" does not contain the address 0x%llX\n",
 		filename,
@@ -59,6 +59,25 @@ void start_maxhex(char *filename, unsigned long long cursoraddr, char ro)
 		return;
 	}
 
+	if (!ro) {
+		tmpfilename = make_swp(filename);
+		file = fopen(filename, "rb");
+		tmpfile = fopen(tmpfilename, "wb");
+
+		if (tmpfile) {
+			do {
+				c = fgetc(file);
+
+				if (c != EOF)
+					fputc(c, tmpfile);
+			} while (c != EOF);
+
+			fclose(tmpfile);
+		}
+
+		fclose(file);
+	}
+
 	initscr();
 	raw();
 	noecho();
@@ -66,38 +85,33 @@ void start_maxhex(char *filename, unsigned long long cursoraddr, char ro)
 	meta(stdscr, TRUE);
 	curs_set(0);
 
-	getmaxyx(stdscr, maxy, maxx);
-
 	if (!ro) {
-		tmpfilename = make_swp(filename);
-		tmpfile = fopen(tmpfilename, "wb");
+		file = fopen(tmpfilename, "wb");
 
-		if (!tmpfile) {
+		if (!file) {
 			mvprintw(
-			    maxy - 3,
-			    0,
-			    "File could not be opened as read-write."
-				);
+			         maxy - 3, 0,
+			         "File could not be opened as read-write."
+			        );
 			mvprintw(
-			    maxy - 2,
-			    0,
-			    "Do you want to open it as read-only? [y/n]"
+			        maxy - 2, 0,
+			        "Do you want to open it as read-only? [y/n]"
 				);
 
 			do {
 				c = getch();
 
-				if (c == 'Y' || c == 'y') {
-					ro = 1;
-				} else if (c == 'N' || c == 'n') {
+				if (c == 'N' || c == 'n') {
 					free(tmpfilename);
 					endwin();
 
 					return;
 				}
 			} while (c != 'Y' && c != 'y');
+
+			ro = 1;
 		} else {
-			fclose(tmpfile);
+			fclose(file);
 		}
 	}
 
@@ -111,41 +125,115 @@ void start_maxhex(char *filename, unsigned long long cursoraddr, char ro)
 	} else {
 		while (startaddr > 0
 		       && (cursoraddr - (cursoraddr % 0x10) - startaddr)
-		          / 0x10 < (maxy - 2) / 2)
+		          / 0x10 < (maxy - 1) / 2 - 1)
 			startaddr -= 0x10;
 	}
 
-	mvprintw(0, 0, "     ");
+	while (mainloop) {
+#ifdef WIN32
+		maxy = stdscr->_maxy;
+#else
+		maxy = stdscr->_maxy + 1;
+#endif
 
-	for (i = 0; i < 16; i++)
-		printw("%2X ", i);
+		erase();
 
-	printw("Dump:");
+		if (!filebuf) {
+			filebuf = malloc((maxy - 2) * 0x10);
 
-	do {
-		y = 1;
-		file = fopen(filename, "rb");
+			if (!filebuf) {
+				endwin();
+				printf("ERROR: Malloc failed\n");
 
-		for (i = 0; c != EOF; i++) {
-			c = fgetc(file);
+				if (!ro)
+					free(tmpfilename);
 
-			if (c != EOF)
-				endaddr = i;
+				return;
+			}
+		} else {
+			filebuf = realloc(filebuf, (maxy - 2) * 0x10);
+
+			if (!filebuf) {
+				endwin();
+				printf("ERROR: Realloc failed\n");
+
+				if (!ro)
+					free(tmpfilename);
+
+				return;
+			}
 		}
 
-		fclose(file);
-		file = fopen(filename, "rb");
+		if (ro) {
+			file = fopen(filename, "rb");
 
-		for (i = 0; i < startaddr; i++)
+			if (!file) {
+				endwin();
+				printf(
+				    "ERROR: File %s does no longer exist\n",
+				    filename
+				      );
+				free(filebuf);
+				return;
+			}
+		} else {
+			file = fopen(filename, "rb");
+
+			if (!file)
+				fileexist = 0;
+			else
+				fclose(file);
+
+			file = fopen(tmpfilename, "rb");
+
+			if (!file) {
+				endwin();
+				printf(
+				  "ERROR: Can't read from temporary file\n"
+				      );
+				return;
+			}
+
+			if (!fileexist) {
+				mvprintw(maxy - 4, 0,
+				         "File %s does no longer exist",
+				         filename);
+				mvprintw(
+			      maxy - 3, 0,
+			      "Do you want to continue edit anyway? (y/n)"
+				        );
+
+				do {
+					c = getch();
+
+					if (c == 'n' || c == 'N') {
+						free(filebuf);
+						free(tmpfilename);
+						endwin();
+						return;
+					}
+				} while(c != 'y' && c != 'Y');
+			}
+		}
+
+		for (addrcount = 0; addrcount < startaddr; addrcount++)
 			fgetc(file);
 
-		for (i = 0; i < 352; i++)
-			filebuf[i] = fgetc(file);
+		for (addrcount = 0; addrcount < (maxy - 2) * 0x10; addrcount++)
+			filebuf[addrcount] = fgetc(file);
 
 		fclose(file);
+		mvprintw(0, 0, "     ");
 
-		for (i = 0; i < 352; i++) {
-			if (i % 16 == 0) {
+		for (i = 0; i < 16; i++)
+			printw("%2X ", i);
+
+		printw("Dump:");
+
+		y = 1;
+
+		for (i = 0; i < (maxy - 2) * 0x10; i++) {
+			if (i % 0x10 == 0) {
 				j = 0;
 				mvprintw(y, 0, "%03Xx ", (startaddr + i) / 0x10);
 			}
@@ -155,13 +243,13 @@ void start_maxhex(char *filename, unsigned long long cursoraddr, char ro)
 				printw("%02X", filebuf[i]);
 				attroff(A_STANDOUT);
 				printw(" ");
-			} else if (startaddr + i > endaddr) {
+			} else if (startaddr + i >= endaddr) {
 				printw("   ");
 			} else {
 				printw("%02X ", filebuf[i]);
 			}
 
-			if (startaddr + i > endaddr)
+			if (startaddr + i >= endaddr)
 				dumpstr[j] = ' ';
 			else if (filebuf[i] >= 0x21 && filebuf[i] <= 0x7E)
 				dumpstr[j] = filebuf[i];
@@ -170,7 +258,7 @@ void start_maxhex(char *filename, unsigned long long cursoraddr, char ro)
 
 			j++;
 
-			if ((i + 1) % 16 == 0) {
+			if ((i + 1) % 0x10 == 0) {
 				printw("%s", dumpstr);
 
 				if (cursoraddr / 0x10 == (startaddr + i) / 0x10) {
@@ -183,7 +271,7 @@ void start_maxhex(char *filename, unsigned long long cursoraddr, char ro)
 			}
 		}
 
-		mvprintw(23, 32, "Current position: %04X\tFile ends at: %04X", cursoraddr, endaddr);
+		mvprintw(maxy - 1, 32, "Current position: %04X\tFile ends at: %04X", cursoraddr, endaddr);
 
 		refresh();
 		c = getch();
@@ -196,7 +284,9 @@ void start_maxhex(char *filename, unsigned long long cursoraddr, char ro)
 			cursoraddr++;
 		else if (c == KEY_LEFT && cursoraddr > 0)
 			cursoraddr--;
-		else if (c == ':') {
+		else if (c == 'q')
+			mainloop = 0;
+		/*else if (c == ':') {
 			curs_set(1);
 			mvaddch(23, 0, ':');
 			printw("\t\t\t\t");
@@ -227,16 +317,13 @@ void start_maxhex(char *filename, unsigned long long cursoraddr, char ro)
 
 			cmdc = 0;
 			curs_set(0);
-		}
+		}*/
 
-		if ((cursoraddr - (cursoraddr % 16) == startaddr) && startaddr)
+		if ((cursoraddr - (cursoraddr % 0x10) == startaddr) && startaddr)
 			startaddr -= 0x10;
-		else if ((cursoraddr - (cursoraddr % 16)) == startaddr + 16 * 0x15 && cursoraddr - (cursoraddr % 16) < endaddr - (endaddr % 16))
+		else if ((cursoraddr - (cursoraddr % 0x10)) == startaddr + 0x10 * (maxy - 3) && cursoraddr - (cursoraddr % 0x10) < endaddr - (endaddr % 0x10))
 			startaddr += 0x10;
-	} while (c != 'q');
+	}
 
 	endwin();
-
-	printf("\n%s\n\n", tmpfilename);
-	free(tmpfilename);
 }
