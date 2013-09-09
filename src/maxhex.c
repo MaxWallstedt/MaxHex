@@ -225,7 +225,7 @@ void start_maxhex(char *filename, unsigned long long cursoraddr, char ro)
 		fclose(file);
 		mvprintw(0, 0, "     ");
 
-		for (i = 0; i < 16; i++)
+		for (i = 0; i < 0x10; i++)
 			printw("%2X ", i);
 
 		printw("Dump:");
@@ -278,9 +278,9 @@ void start_maxhex(char *filename, unsigned long long cursoraddr, char ro)
 
 		if (c == KEY_UP && cursoraddr > 0x0F)
 			cursoraddr -= 0x10;
-		else if (c == KEY_DOWN && cursoraddr + 0x10 <= endaddr)
+		else if (c == KEY_DOWN && cursoraddr + 0x10 < endaddr)
 			cursoraddr += 0x10;
-		else if (c == KEY_RIGHT && cursoraddr < endaddr)
+		else if (c == KEY_RIGHT && cursoraddr < endaddr - 1)
 			cursoraddr++;
 		else if (c == KEY_LEFT && cursoraddr > 0)
 			cursoraddr--;
@@ -321,7 +321,7 @@ void start_maxhex(char *filename, unsigned long long cursoraddr, char ro)
 
 		if ((cursoraddr - (cursoraddr % 0x10) == startaddr) && startaddr)
 			startaddr -= 0x10;
-		else if ((cursoraddr - (cursoraddr % 0x10)) == startaddr + 0x10 * (maxy - 3) && cursoraddr - (cursoraddr % 0x10) < endaddr - (endaddr % 0x10))
+		else if ((cursoraddr - (cursoraddr % 0x10)) == startaddr + 0x10 * (maxy - 3) && cursoraddr - (cursoraddr % 0x10) < endaddr - 1 - ((endaddr - 1) % 0x10))
 			startaddr += 0x10;
 	}
 
